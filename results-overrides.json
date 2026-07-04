@@ -1,0 +1,10 @@
+{
+  "_comment": "OPTIONAL manual results. Anything here overrides the live feed — use it to correct or fill in results the openfootball feed hasn't published yet. Valid stage values: group, round-of-32, round-of-16, quarter-final, semi-final, runner-up, winner. Example below is commented out via a key the app ignores; move teams into teamStages to use them.",
+  "teamStages": {},
+  "_example_teamStages": {
+    "Brazil": "winner",
+    "France": "runner-up",
+    "England": "semi-final",
+    "Argentina": "quarter-final"
+  }
+}

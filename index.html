@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>World Cup 2026 Sweepstakes Leaderboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <h1>⚽ World Cup 2026 Sweepstakes</h1>
+    <p class="subtitle">Office leaderboard — three teams each, points for how far they go.</p>
+  </header>
+
+  <main>
+    <section id="status" class="status" aria-live="polite">Loading results…</section>
+
+    <section class="board-wrap">
+      <table id="leaderboard" class="leaderboard" hidden>
+        <thead>
+          <tr>
+            <th class="col-rank">#</th>
+            <th class="col-name">Player</th>
+            <th class="col-team">Favourite</th>
+            <th class="col-team">Mid-range</th>
+            <th class="col-team">Underdog</th>
+            <th class="col-total">Total</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section class="scoring">
+      <h2>Scoring</h2>
+      <ul class="scoring-list">
+        <li><span>Group stage exit</span><b>1</b></li>
+        <li><span>Round of 32</span><b>2</b></li>
+        <li><span>Round of 16</span><b>3</b></li>
+        <li><span>Quarter-final</span><b>4</b></li>
+        <li><span>Semi-final</span><b>6</b></li>
+        <li><span>Runner-up</span><b>8</b></li>
+        <li><span>Winner</span><b>12</b></li>
+      </ul>
+      <p class="note">Each player's total is the sum of their three teams. A team scores the value of the
+      furthest stage it reaches.</p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <span id="source-note"></span>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
