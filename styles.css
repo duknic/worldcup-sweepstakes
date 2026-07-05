@@ -202,6 +202,19 @@ body {
   letter-spacing: 0.03em;
   font-size: 0.66rem;
 }
+.clash {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0.5px 6px;
+  border-radius: 999px;
+  font-size: 0.64rem;
+  font-weight: 600;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.clash.pending { background: rgba(247, 201, 72, 0.16); color: var(--gold); border: 1px solid rgba(247, 201, 72, 0.4); }
+.clash.won { background: rgba(55, 214, 111, 0.14); color: var(--green); border: 1px solid rgba(55, 214, 111, 0.4); }
+.clash.lost { background: rgba(224, 106, 95, 0.14); color: var(--out); border: 1px solid rgba(224, 106, 95, 0.4); }
 .team.unknown .tname { color: #ff8b82; }
 .team.unknown .tname::after { content: " ⚠"; font-size: .72rem; }
 

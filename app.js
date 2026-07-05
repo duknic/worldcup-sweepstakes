@@ -271,13 +271,78 @@ function stageForTeam(stages, teamName) {
   );
 }
 
-function scorePlayers(participants, stages) {
+// Knockout fixtures with both teams known (real names). Group games are skipped
+// because two teams meeting there can both still advance — only knockouts are
+// single-elimination, where a head-to-head guarantees one team is out.
+function extractFixtures(data) {
+  const matches = (data && data.matches) || [];
+  const realTeams = new Set();
+  for (const m of matches) {
+    if (roundToStage(m.round) === "group") {
+      if (m.team1) realTeams.add(norm(m.team1));
+      if (m.team2) realTeams.add(norm(m.team2));
+    }
+  }
+  const isReal = (t) => realTeams.has(norm(t));
+  const fixtures = [];
+  for (const m of matches) {
+    const stage = roundToStage(m.round);
+    if (stage === "group") continue;
+    if (!isReal(m.team1) || !isReal(m.team2)) continue;
+    fixtures.push({
+      stage,
+      team1: m.team1,
+      team2: m.team2,
+      played: isPlayed(m),
+      winner: matchWinner(m),
+    });
+  }
+  return fixtures;
+}
+
+// Find a fixture between two specific teams.
+function fixtureBetween(fixtures, a, b) {
+  const na = norm(a);
+  const nb = norm(b);
+  return fixtures.find(
+    (f) =>
+      (norm(f.team1) === na && norm(f.team2) === nb) ||
+      (norm(f.team1) === nb && norm(f.team2) === na)
+  );
+}
+
+function scorePlayers(participants, stages, fixtures = []) {
   const rows = participants.map((p) => {
     const slots = ["favourite", "midRange", "underdog"].map((slot) => {
       const teamName = p.teams ? p.teams[slot] : null;
       const s = stageForTeam(stages, teamName);
       return { slot, teamName: teamName || "—", ...s };
     });
+
+    // Detect head-to-heads between this participant's own teams.
+    for (let i = 0; i < slots.length; i++) {
+      for (let j = i + 1; j < slots.length; j++) {
+        const A = slots[i];
+        const B = slots[j];
+        if (A.teamName === "—" || B.teamName === "—") continue;
+        const f = fixtureBetween(fixtures, A.teamName, B.teamName);
+        if (!f) continue;
+        const stageLabel = STAGE_LABEL[f.stage] || f.stage;
+        const mark = (self, other) => {
+          self.clash = {
+            withTeam: other.teamName,
+            stage: f.stage,
+            stageLabel,
+            played: f.played,
+            // undefined until played; true if this team won the tie
+            won: f.played && f.winner ? norm(f.winner) === norm(self.teamName) : null,
+          };
+        };
+        mark(A, B);
+        mark(B, A);
+      }
+    }
+
     const total = slots.reduce((sum, s) => sum + (s.points || 0), 0);
     const alive = slots.filter((s) => s.teamName !== "—" && !s.eliminated).length;
     return { name: p.name, slots, total, alive };
@@ -363,13 +428,32 @@ function teamLine(s) {
   const marker = out
     ? `<span class="xmark" aria-hidden="true">✕</span>`
     : `<span class="dot" aria-hidden="true"></span>`;
-  const meta = out
-    ? `Out · ${STAGE_LABEL[s.stage] || s.stage} · ${s.points}${s.overridden ? " *" : ""}`
-    : `${STAGE_LABEL[s.stage] || s.stage} · ${s.points}${s.overridden ? " *" : ""}`;
+  const stageBit = `${STAGE_LABEL[s.stage] || s.stage} · ${s.points}${s.overridden ? " *" : ""}`;
+  const meta = out ? `Out · ${stageBit}` : stageBit;
+
+  // Head-to-head between two of the owner's teams.
+  let clashTag = "";
+  if (s.clash) {
+    const c = s.clash;
+    let label;
+    let kind;
+    if (!c.played) {
+      label = `⚔ vs your ${escapeHtml(c.withTeam)} · ${c.stageLabel}`;
+      kind = "pending"; // one of them will go out here
+    } else if (c.won) {
+      label = `⚔ knocked out your ${escapeHtml(c.withTeam)}`;
+      kind = "won";
+    } else {
+      label = `⚔ lost to your ${escapeHtml(c.withTeam)}`;
+      kind = "lost";
+    }
+    clashTag = `<span class="clash ${kind}">${label}</span>`;
+  }
+
   return `
     <li class="${cls}"${title}>
       ${marker}
-      <span class="tname">${escapeHtml(s.teamName)}</span>
+      <span class="tname">${escapeHtml(s.teamName)}${clashTag}</span>
       <span class="tmeta">${meta}</span>
     </li>`;
 }
@@ -470,6 +554,7 @@ async function main() {
   }
 
   let stages = {};
+  let fixtures = [];
   let sourceLabel = "";
   let status = "Round underway";
   let live = null;
@@ -483,6 +568,7 @@ async function main() {
   }
   if (live) {
     stages = deriveStages(live);
+    fixtures = extractFixtures(live);
     status = tournamentStatus(live);
     sourceLabel = "live results (openfootball)";
     setStatus("Live results loaded · updated " + new Date().toLocaleString(), "ok");
@@ -496,7 +582,7 @@ async function main() {
   }
 
   stages = applyOverrides(stages, overrides);
-  const rows = scorePlayers(participants, stages);
+  const rows = scorePlayers(participants, stages, fixtures);
   render(rows, status);
 
   const sourceNote = document.getElementById("source-note");
@@ -513,5 +599,5 @@ if (typeof document !== "undefined") {
 
 // Exposed for the node test harness (test.js); ignored in the browser.
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { deriveStages, applyOverrides, scorePlayers, tournamentStatus, render, CONFIG, STAGE_POINTS, norm };
+  module.exports = { deriveStages, applyOverrides, scorePlayers, extractFixtures, tournamentStatus, render, CONFIG, STAGE_POINTS, norm };
 }

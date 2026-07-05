@@ -1,7 +1,7 @@
 /* Node test harness for the scoring logic. Run: node test.js
  * Not part of the deployed site.
  */
-const { deriveStages, applyOverrides, scorePlayers, STAGE_POINTS } = require("./app.js");
+const { deriveStages, applyOverrides, scorePlayers, extractFixtures, STAGE_POINTS } = require("./app.js");
 
 let pass = 0, fail = 0;
 function eq(actual, expected, msg) {
@@ -125,6 +125,47 @@ const pens = { matches: [
 const pn = deriveStages(pens);
 eq(pn["qq"].eliminated, true, "Pens: Qq lost shootout => out");
 eq(pn["pp"].eliminated, false, "Pens: Pp won shootout, reached R16 frontier => in");
+
+// Head-to-head between two of a participant's own teams (Nic: France v Morocco QF).
+const h2h = { matches: [
+  { round: "Matchday 6", group: "Group I", team1: "France", team2: "Senegal", score: { ft: [2, 0] } },
+  { round: "Matchday 3", group: "Group C", team1: "Brazil", team2: "Morocco", score: { ft: [0, 1] } },
+  { round: "Matchday 6", group: "Group I", team1: "Ivory Coast", team2: "x", score: { ft: [0, 0] } },
+  // Bracket brings France and Morocco together in the QF (not played yet).
+  { round: "Round of 16", num: 89, team1: "France", team2: "Aa", score: { ft: [1, 0] } },
+  { round: "Round of 16", num: 90, team1: "Morocco", team2: "Bb", score: { ft: [2, 1] } },
+  { round: "Quarter-final", num: 97, team1: "France", team2: "Morocco" },
+  { round: "Matchday 1", group: "Group Z", team1: "Aa", team2: "Bb", score: { ft: [0, 0] } },
+]};
+const fx = extractFixtures(h2h);
+const nicRow = scorePlayers(
+  [{ name: "Nic", teams: { favourite: "France", midRange: "Morocco", underdog: "Ivory Coast" } }],
+  deriveStages(h2h),
+  fx
+)[0];
+const franceSlot = nicRow.slots.find((s) => s.teamName === "France");
+const moroccoSlot = nicRow.slots.find((s) => s.teamName === "Morocco");
+const ivorySlot = nicRow.slots.find((s) => s.teamName === "Ivory Coast");
+eq(!!franceSlot.clash, true, "France flagged as clash");
+eq(franceSlot.clash.withTeam, "Morocco", "France clash opponent = Morocco");
+eq(franceSlot.clash.stage, "quarter-final", "Clash stage = QF");
+eq(franceSlot.clash.played, false, "Clash not yet played");
+eq(!!moroccoSlot.clash, true, "Morocco also flagged");
+eq(!!ivorySlot.clash, false, "Ivory Coast has no clash");
+
+// Played head-to-head: winner tagged won, loser tagged lost.
+const h2hPlayed = { matches: [
+  { round: "Matchday 6", group: "Group I", team1: "France", team2: "Senegal", score: { ft: [2, 0] } },
+  { round: "Matchday 3", group: "Group C", team1: "Brazil", team2: "Morocco", score: { ft: [0, 1] } },
+  { round: "Quarter-final", num: 97, team1: "France", team2: "Morocco", score: { ft: [1, 0] } },
+]};
+const nicRow2 = scorePlayers(
+  [{ name: "Nic", teams: { favourite: "France", midRange: "Morocco", underdog: "—" } }],
+  deriveStages(h2hPlayed),
+  extractFixtures(h2hPlayed)
+)[0];
+eq(nicRow2.slots[0].clash.won, true, "France won the internal QF");
+eq(nicRow2.slots[1].clash.won, false, "Morocco lost the internal QF");
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
