@@ -25,11 +25,17 @@ the extra Round of 32 compared with older formats.)
 ## How it works
 
 - **Live results:** fetched from
-  [`openfootball/worldcup.json`](https://github.com/openfootball/worldcup.json)
-  via the jsDelivr CDN — public domain, no API key, CORS-enabled, so it can be
-  called straight from the browser. The app reads the match data and works out
-  each team's furthest stage from the scores (handling extra time and
-  penalties).
+  [`openfootball/worldcup.json`](https://github.com/openfootball/worldcup.json) —
+  public domain, no API key, CORS-enabled. The app tries
+  `raw.githubusercontent.com` first (updates within seconds of a commit) and
+  falls back to the jsDelivr CDN mirror (fast, but can be several hours stale).
+  It reads the `score` object (`ft`/`et`/`pen`) to work out each team's furthest
+  stage and whether it's still in (handling extra time and penalties).
+- **A note on the feed:** it's community-maintained, so knockout fixtures stay
+  as placeholders (`2A`, `W74`) until a maintainer fills in the drawn teams, and
+  results can lag the real match by a while. A team is only auto-marked
+  eliminated once the feed either records it losing a knockout tie or advances a
+  later round without it. Until then, use overrides.
 - **Manual overrides / fallback:** `results-overrides.json` lets you hand-set
   any team's stage. These always win over the live feed, and are used on their
   own if the feed is ever unreachable. Handy when the free feed lags behind a

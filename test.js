@@ -97,5 +97,34 @@ eq(bo["cc"].eliminated, true, "Cc stuck at R32 below frontier => out");
 eq(bo["bb"].eliminated, true, "Bb never left group => out");
 eq(bo["ff"].eliminated, true, "Ff group-only => out");
 
+// New openfootball 2026 score format: { score: { ft:[a,b], et:[...], pen:[...] } }.
+const newFmt = { matches: [
+  { round: "Matchday 1", group: "Group A", team1: "Xx", team2: "Yy", score: { ft: [2, 0], ht: [1, 0] } },
+  { round: "Matchday 1", group: "Group A", team1: "Zz", team2: "Ww", score: { ft: [0, 0], ht: [0, 0] } },
+  // R32: Xx beats Yy on the day
+  { round: "Round of 32", num: 73, team1: "Xx", team2: "Yy", score: { ft: [1, 0], ht: [0, 0] } },
+  // R32: Zz beats Ww on penalties after a draw
+  { round: "Round of 32", num: 74, team1: "Zz", team2: "Ww", score: { ft: [1, 1], ht: [0, 1] }, },
+  // R16: Xx vs Zz, Zz wins after extra time
+  { round: "Round of 16", num: 89, team1: "Xx", team2: "Zz", score: { ft: [1, 1], et: [1, 2] } },
+]};
+const nf = deriveStages(newFmt);
+eq(nf["yy"].eliminated, true, "New-fmt: Yy lost R32 (score.ft) => out");
+eq(nf["yy"].points, 2, "New-fmt: Yy R32 => 2");
+eq(nf["xx"].eliminated, true, "New-fmt: Xx lost R16 after ET (score.et) => out");
+eq(nf["xx"].points, 3, "New-fmt: Xx reached R16 => 3");
+eq(nf["zz"].eliminated, false, "New-fmt: Zz won R16, still in");
+
+// Penalties decide via score.pen even when ft is level.
+const pens = { matches: [
+  { round: "Matchday 1", group: "Group A", team1: "Pp", team2: "Qq", score: { ft: [0, 0] } },
+  { round: "Round of 32", num: 73, team1: "Pp", team2: "Qq", score: { ft: [1, 1], pen: [5, 4] } },
+  { round: "Round of 16", num: 89, team1: "Pp", team2: "Rr", score: null },
+  { round: "Matchday 1", group: "Group B", team1: "Rr", team2: "Ss", score: { ft: [1, 0] } },
+]};
+const pn = deriveStages(pens);
+eq(pn["qq"].eliminated, true, "Pens: Qq lost shootout => out");
+eq(pn["pp"].eliminated, false, "Pens: Pp won shootout, reached R16 frontier => in");
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

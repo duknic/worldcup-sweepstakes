@@ -6,10 +6,14 @@
 // ---- Config -----------------------------------------------------------------
 
 const CONFIG = {
-  // Primary live data source: openfootball, public domain, no key, CORS-enabled
-  // via the jsDelivr CDN. Served straight from GitHub, community-updated.
-  liveDataUrl:
+  // Live data source: openfootball, public domain, no key, CORS-enabled.
+  // We try raw.githubusercontent.com first because it reflects the latest commit
+  // almost immediately; the jsDelivr CDN mirror is a fallback (fast, but can
+  // serve a snapshot that's several hours stale).
+  liveDataUrls: [
+    "https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json",
     "https://cdn.jsdelivr.net/gh/openfootball/worldcup.json@master/2026/worldcup.json",
+  ],
 
   // Bundled fallback (and manual override) shipped in this repo. Used when the
   // live source is unreachable, and always applied on top of live data so you
@@ -83,24 +87,45 @@ function norm(name) {
     .trim();
 }
 
+// The 2026 openfootball feed stores results as
+//   "score": { "ht": [a,b], "ft": [a,b], "et": [a,b], "pen": [a,b] }
+// Older feeds used flat score1/score2 (+ ...et / ...p). Support both.
+function pair(v) {
+  return Array.isArray(v) && v.length === 2 && typeof v[0] === "number" && typeof v[1] === "number"
+    ? v
+    : null;
+}
+
+// Full-time (or however far it was played) result as [a, b], or null if unplayed.
+function resultPair(m) {
+  if (m && m.score) {
+    return pair(m.score.ft) || pair(m.score.et) || pair(m.score.pen) || pair(m.score.p) || null;
+  }
+  if (typeof m.score1 === "number" && typeof m.score2 === "number") return [m.score1, m.score2];
+  return null;
+}
+
+// The pair that DECIDES the tie: penalties beat extra time beat full time.
+function decisivePair(m) {
+  if (m && m.score) {
+    return pair(m.score.pen) || pair(m.score.p) || pair(m.score.et) || pair(m.score.ft) || null;
+  }
+  if (typeof m.score1p === "number" && typeof m.score2p === "number") return [m.score1p, m.score2p];
+  if (typeof m.score1et === "number" && typeof m.score2et === "number") return [m.score1et, m.score2et];
+  if (typeof m.score1 === "number" && typeof m.score2 === "number") return [m.score1, m.score2];
+  return null;
+}
+
 function isPlayed(m) {
-  return typeof m.score1 === "number" && typeof m.score2 === "number";
+  return resultPair(m) !== null;
 }
 
 // Winner of a played knockout match, accounting for extra time & penalties.
 function matchWinner(m) {
-  if (!isPlayed(m)) return null;
-  let s1 = m.score1;
-  let s2 = m.score2;
-  if (typeof m.score1et === "number" && typeof m.score2et === "number") {
-    s1 = m.score1et;
-    s2 = m.score2et;
-  }
-  if (typeof m.score1p === "number" && typeof m.score2p === "number") {
-    return m.score1p > m.score2p ? m.team1 : m.team2; // penalties decide
-  }
-  if (s1 > s2) return m.team1;
-  if (s2 > s1) return m.team2;
+  const d = decisivePair(m);
+  if (!d) return null;
+  if (d[0] > d[1]) return m.team1;
+  if (d[1] > d[0]) return m.team2;
   return null;
 }
 
@@ -447,14 +472,21 @@ async function main() {
   let stages = {};
   let sourceLabel = "";
   let status = "Round underway";
-  try {
-    const live = await fetchJson(CONFIG.liveDataUrl);
+  let live = null;
+  for (const url of CONFIG.liveDataUrls) {
+    try {
+      live = await fetchJson(url);
+      break;
+    } catch (e) {
+      console.warn("Live source failed, trying next:", url, e.message);
+    }
+  }
+  if (live) {
     stages = deriveStages(live);
     status = tournamentStatus(live);
     sourceLabel = "live results (openfootball)";
     setStatus("Live results loaded · updated " + new Date().toLocaleString(), "ok");
-  } catch (e) {
-    console.error(e);
+  } else {
     status = "Showing manual results";
     sourceLabel = "manual overrides only (live feed unreachable)";
     setStatus(
