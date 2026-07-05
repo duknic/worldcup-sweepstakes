@@ -1,13 +1,19 @@
 {
   "_comment": "One entry per player. Each has three teams: favourite, midRange, underdog. Team names must match the tournament data — see the full list of 48 teams in README.md. Matching is accent- and case-insensitive.",
   "participants": [
-    { "name": "Alex",    "teams": { "favourite": "Brazil",      "midRange": "Japan",       "underdog": "Haiti" } },
-    { "name": "Priya",   "teams": { "favourite": "France",      "midRange": "Uruguay",     "underdog": "Cape Verde" } },
-    { "name": "Sam",     "teams": { "favourite": "England",     "midRange": "Croatia",     "underdog": "Panama" } },
-    { "name": "Mei",     "teams": { "favourite": "Argentina",   "midRange": "Austria",     "underdog": "Jordan" } },
-    { "name": "Jordan",  "teams": { "favourite": "Spain",       "midRange": "Ecuador",     "underdog": "Curaçao" } },
-    { "name": "Tomas",   "teams": { "favourite": "Germany",     "midRange": "Switzerland", "underdog": "Qatar" } },
-    { "name": "Fatima",  "teams": { "favourite": "Portugal",    "midRange": "Colombia",    "underdog": "DR Congo" } },
-    { "name": "Chris",   "teams": { "favourite": "Netherlands", "midRange": "Morocco",     "underdog": "Scotland" } }
+    { "name": "Mike D",        "teams": { "favourite": "Germany",     "midRange": "Ecuador",     "underdog": "South Africa" } },
+    { "name": "Kacie",         "teams": { "favourite": "France",      "midRange": "Senegal",     "underdog": "Ghana" } },
+    { "name": "Patrick",       "teams": { "favourite": "Netherlands", "midRange": "Turkey",      "underdog": "New Zealand" } },
+    { "name": "Neill D",       "teams": { "favourite": "England",     "midRange": "Austria",     "underdog": "Qatar" } },
+    { "name": "Mike C",        "teams": { "favourite": "Norway",      "midRange": "Germany",     "underdog": "Panama" } },
+    { "name": "Mary D",        "teams": { "favourite": "Paraguay",    "midRange": "Netherlands", "underdog": "Saudi Arabia" } },
+    { "name": "Nic D",         "teams": { "favourite": "France",      "midRange": "Morocco",     "underdog": "Ivory Coast" } },
+    { "name": "Sadie",         "teams": { "favourite": "Portugal",    "midRange": "USA",         "underdog": "Algeria" } },
+    { "name": "Jamie D",       "teams": { "favourite": "Belgium",     "midRange": "South Korea", "underdog": "Uzbekistan" } },
+    { "name": "Lucy & Fenna",  "teams": { "favourite": "Argentina",   "midRange": "Saudi Arabia","underdog": "Jordan" } },
+    { "name": "Adam",          "teams": { "favourite": "England",     "midRange": "Canada",      "underdog": "Australia" } },
+    { "name": "Jay",           "teams": { "favourite": "Portugal",    "midRange": "Switzerland", "underdog": "Sweden" } },
+    { "name": "Jasmine",       "teams": { "favourite": "Brazil",      "midRange": "Colombia",    "underdog": "Curaçao" } },
+    { "name": "Kat D",         "teams": { "favourite": "Spain",       "midRange": "Mexico",      "underdog": "Egypt" } }
   ]
 }
