@@ -571,7 +571,7 @@ async function main() {
     fixtures = extractFixtures(live);
     status = tournamentStatus(live);
     sourceLabel = "live results (openfootball)";
-    setStatus("Live results loaded · updated " + new Date().toLocaleString(), "ok");
+    setStatus("Live results loaded · updated " + new Date().toLocaleString("en-GB"), "ok");
   } else {
     status = "Showing manual results";
     sourceLabel = "manual overrides only (live feed unreachable)";
