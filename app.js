@@ -31,9 +31,9 @@ const STAGE_POINTS = {
   group: 1, // in the tournament / eliminated in the group stage
   "round-of-32": 2,
   "round-of-16": 3,
-  "quarter-final": 4,
-  "semi-final": 6, // includes both third-place play-off teams
-  "runner-up": 8,
+  "quarter-final": 5,
+  "semi-final": 8, // includes both third-place play-off teams
+  "runner-up": 10,
   winner: 12,
 };
 
