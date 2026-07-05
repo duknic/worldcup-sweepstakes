@@ -122,12 +122,16 @@ function deriveStages(data) {
   const eliminated = {}; // normName -> true
   let champion = null;
   let runnerUp = null;
-  let knockoutStarted = false;
+  // Frontier = furthest round the tournament has advanced to (any real team
+  // slotted into it). A team that hasn't reached the frontier has been left
+  // behind — i.e. eliminated — even before the feed publishes scores.
+  let frontier = 0;
 
   const bump = (team, stageKey) => {
     const n = norm(team);
     if (!realTeams.has(n)) return; // ignore placeholders like "2A" / "W74"
     const rank = STAGE_RANK[stageKey];
+    if (rank > frontier) frontier = rank;
     if (!best[n] || rank > best[n].rank) {
       best[n] = { rank, stageKey, displayName: team };
     }
@@ -139,7 +143,6 @@ function deriveStages(data) {
     bump(m.team2, stage);
 
     if (stage === "group") continue;
-    if (isPlayed(m)) knockoutStarted = true;
 
     const w = matchWinner(m);
     if (!w) continue;
@@ -157,7 +160,9 @@ function deriveStages(data) {
     }
   }
 
-  // Convert to final stage keys + points + elimination.
+  // Convert to final stage keys + points + elimination. A team is out if it
+  // lost a played match, or if the tournament has advanced past its furthest
+  // round (rank below the frontier).
   const result = {};
   for (const [n, info] of Object.entries(best)) {
     let stageKey = info.stageKey;
@@ -166,22 +171,20 @@ function deriveStages(data) {
       stage: stageKey,
       points: STAGE_POINTS[stageKey],
       displayName: info.displayName,
-      eliminated: !!eliminated[n],
+      eliminated: !!eliminated[n] || info.rank < frontier,
     };
   }
 
-  // Real teams with no knockout appearance sit at the group baseline. If the
-  // knockouts have begun, those teams are out.
+  // Real teams with no knockout appearance sit at the group baseline. Once the
+  // knockout bracket exists (frontier past the group), those teams are out.
   for (const n of realTeams) {
     if (!result[n]) {
       result[n] = {
         stage: "group",
         points: STAGE_POINTS.group,
         displayName: n,
-        eliminated: knockoutStarted,
+        eliminated: frontier > 0,
       };
-    } else if (result[n].stage === "group" && knockoutStarted) {
-      result[n].eliminated = true;
     }
   }
 
@@ -282,25 +285,40 @@ function tournamentStatus(data) {
     ["semi-final", "Semi-finals"],
     ["final", "Final"],
   ];
-  const played = {};
+  const realTeams = new Set();
+  for (const m of matches) {
+    if (roundToStage(m.round) === "group") {
+      if (m.team1) realTeams.add(norm(m.team1));
+      if (m.team2) realTeams.add(norm(m.team2));
+    }
+  }
+  const isReal = (t) => realTeams.has(norm(t));
+
+  const set = {}; // fixtures with real team names slotted in
+  const played = {}; // fixtures with scores
   const total = {};
   for (const m of matches) {
     const s = roundToStage(m.round);
     total[s] = (total[s] || 0) + 1;
+    if (isReal(m.team1) && isReal(m.team2)) set[s] = (set[s] || 0) + 1;
     if (isPlayed(m)) played[s] = (played[s] || 0) + 1;
   }
+
+  // The current round is the furthest one whose bracket has been drawn.
   let latest = -1;
   order.forEach(([key], i) => {
-    if (played[key]) latest = i;
+    if (set[key]) latest = i;
   });
   if (latest < 0) return "Fixtures loaded · tournament not started";
+
   const [key, label] = order[latest];
-  const complete = total[key] > 0 && (played[key] || 0) >= total[key];
-  if (complete) {
+  const allPlayed = total[key] > 0 && (played[key] || 0) >= total[key];
+  if (allPlayed) {
     const next = order[latest + 1];
     return next ? `${label} complete · ${next[1]} begins` : "Tournament complete 🏆";
   }
-  return `${label} underway`;
+  // Bracket for this round is set but not all games are in.
+  return `${label} · in progress`;
 }
 
 // ---- Rendering --------------------------------------------------------------
@@ -317,11 +335,17 @@ function teamLine(s) {
     ? ' title="Team name not found in results — check spelling in participants.json"'
     : "";
   const cls = ["team", out ? "out" : "in", s.unknown ? "unknown" : ""].join(" ").trim();
+  const marker = out
+    ? `<span class="xmark" aria-hidden="true">✕</span>`
+    : `<span class="dot" aria-hidden="true"></span>`;
+  const meta = out
+    ? `Out · ${STAGE_LABEL[s.stage] || s.stage} · ${s.points}${s.overridden ? " *" : ""}`
+    : `${STAGE_LABEL[s.stage] || s.stage} · ${s.points}${s.overridden ? " *" : ""}`;
   return `
     <li class="${cls}"${title}>
-      <span class="dot" aria-hidden="true"></span>
+      ${marker}
       <span class="tname">${escapeHtml(s.teamName)}</span>
-      <span class="tmeta">${STAGE_LABEL[s.stage] || s.stage} · ${s.points}${s.overridden ? " *" : ""}</span>
+      <span class="tmeta">${meta}</span>
     </li>`;
 }
 
@@ -348,9 +372,11 @@ function card(row, isLeader, isSpoon) {
 }
 
 function render(rows, status) {
-  document.getElementById("status-line").textContent = status;
+  const statusLine = document.getElementById("status-line");
+  if (statusLine) statusLine.textContent = status;
 
   const board = document.getElementById("board");
+  if (!board) return; // stale/mismatched markup — nothing to render into
   if (!rows.length) {
     board.innerHTML = `<p class="empty">No participants yet — add players in participants.json.</p>`;
     return;
@@ -372,7 +398,9 @@ function render(rows, status) {
   board.innerHTML = html;
 
   // Prizes strip
-  document.getElementById("prizes").innerHTML = CONFIG.prizes
+  const prizesEl = document.getElementById("prizes");
+  if (prizesEl)
+    prizesEl.innerHTML = CONFIG.prizes
     .map(
       (p) => `
       <div class="prize">
@@ -386,6 +414,7 @@ function render(rows, status) {
 
 function setStatus(msg, kind) {
   const el = document.getElementById("status");
+  if (!el) return;
   el.textContent = msg;
   el.className = "status" + (kind ? " " + kind : "");
 }
@@ -438,7 +467,9 @@ async function main() {
   const rows = scorePlayers(participants, stages);
   render(rows, status);
 
-  document.getElementById("source-note").innerHTML =
+  const sourceNote = document.getElementById("source-note");
+  if (sourceNote)
+    sourceNote.innerHTML =
     `Data: ${sourceLabel} · ` +
     `<a href="https://github.com/openfootball/worldcup.json">openfootball/worldcup.json</a> · ` +
     `* = set manually in results-overrides.json`;

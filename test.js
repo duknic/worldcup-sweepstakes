@@ -45,10 +45,10 @@ const stages = deriveStages(data);
 
 eq(stages["alpha"].points, 12, "Alpha wins final => 12");
 eq(stages["alpha"].stage, "winner", "Alpha stage winner");
-eq(stages["india"].points, 8, "India loses final => runner-up 8");
-eq(stages["echo"].points, 6, "Echo lost SF (on pens) => 6");
-eq(stages["delta"].points, 6, "Delta played 3rd-place => semi-final 6");
-eq(stages["hotel"].points, 4, "Hotel lost QF => 4");
+eq(stages["india"].points, 10, "India loses final => runner-up 10");
+eq(stages["echo"].points, 8, "Echo lost SF (on pens) => 8");
+eq(stages["delta"].points, 8, "Delta played 3rd-place => semi-final 8");
+eq(stages["hotel"].points, 5, "Hotel lost QF => 5");
 eq(stages["charlie"].points, 3, "Charlie lost R16 => 3");
 eq(stages["bravo"].points, 2, "Bravo lost R32 => 2");
 eq(stages["foxtrot"].points, 2, "Foxtrot lost R32 => 2");
@@ -63,23 +63,39 @@ eq(stages["juliet"].eliminated, true, "Juliet out (group, knockouts started)");
 
 // Overrides win over derived data.
 const withOverride = applyOverrides({ ...stages }, { teamStages: { Juliet: "quarter-final" } });
-eq(withOverride["juliet"].points, 4, "Override lifts Juliet to QF => 4");
+eq(withOverride["juliet"].points, 5, "Override lifts Juliet to QF => 5");
 
 // Player totals = sum of three teams; ranking + tie handling.
 const players = [
-  { name: "P1", teams: { favourite: "Alpha", midRange: "Echo", underdog: "Bravo" } }, // 12+6+2 = 20
-  { name: "P2", teams: { favourite: "India", midRange: "Hotel", underdog: "Charlie" } }, // 8+4+3 = 15
-  { name: "P3", teams: { favourite: "Delta", midRange: "Foxtrot", underdog: "Juliet" } }, // 6+2+1 = 9
-  { name: "P4", teams: { favourite: "Bravo", midRange: "Charlie", underdog: "Delta" } }, // 2+3+6 = 11
+  { name: "P1", teams: { favourite: "Alpha", midRange: "Echo", underdog: "Bravo" } }, // 12+8+2 = 22
+  { name: "P2", teams: { favourite: "India", midRange: "Hotel", underdog: "Charlie" } }, // 10+5+3 = 18
+  { name: "P3", teams: { favourite: "Delta", midRange: "Foxtrot", underdog: "Juliet" } }, // 8+2+1 = 11
+  { name: "P4", teams: { favourite: "Bravo", midRange: "Charlie", underdog: "Delta" } }, // 2+3+8 = 13
   { name: "P5", teams: { favourite: "Nonexistent", midRange: "Juliet", underdog: "Juliet" } }, // 1+1+1 = 3
 ];
 const rows = scorePlayers(players, stages);
 eq(rows[0].name, "P1", "P1 top of leaderboard");
-eq(rows[0].total, 20, "P1 total 20");
-eq(rows[1].total, 15, "second place total 15");
+eq(rows[0].total, 22, "P1 total 22");
+eq(rows[1].total, 18, "second place total 18");
 eq(rows[0].rank, 1, "rank 1");
 eq(rows[1].rank, 2, "rank 2");
 eq(rows[4].total, 3, "unknown + two group teams => 1+1+1 = 3");
+
+// Frontier-based elimination: bracket drawn but NO scores yet. Teams that
+// didn't make the latest resolved round are out even without results.
+const bracketOnly = { matches: [
+  { round: "Matchday 1", group: "Group A", team1: "Aa", team2: "Bb" },
+  { round: "Matchday 1", group: "Group A", team1: "Cc", team2: "Dd" },
+  { round: "Round of 32", num: 73, team1: "Aa", team2: "Cc" },   // Bb, Dd missed knockouts
+  { round: "Round of 16", num: 89, team1: "Aa", team2: "Ee" },   // Cc missed R16 => out
+  { round: "Matchday 1", group: "Group B", team1: "Ee", team2: "Ff" },
+]};
+const bo = deriveStages(bracketOnly);
+eq(bo["aa"].eliminated, false, "Aa reached R16 frontier => in (no scores)");
+eq(bo["aa"].stage, "round-of-16", "Aa furthest R16");
+eq(bo["cc"].eliminated, true, "Cc stuck at R32 below frontier => out");
+eq(bo["bb"].eliminated, true, "Bb never left group => out");
+eq(bo["ff"].eliminated, true, "Ff group-only => out");
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

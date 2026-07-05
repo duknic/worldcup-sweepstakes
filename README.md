@@ -13,9 +13,9 @@ page load.
 | Group stage exit | 1 |
 | Round of 32 | 2 |
 | Round of 16 | 3 |
-| Quarter-final | 4 |
-| Semi-final | 6 |
-| Runner-up | 8 |
+| Quarter-final | 5 |
+| Semi-final | 8 |
+| Runner-up | 10 |
 | Winner | 12 |
 
 A team scores the value of the **furthest stage it reaches**. Each player's
