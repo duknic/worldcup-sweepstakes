@@ -3,36 +3,33 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>World Cup 2026 Sweepstakes Leaderboard</title>
+  <title>World Cup 2026 Sweepstake</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header class="site-header">
-    <h1>⚽ World Cup 2026 Sweepstakes</h1>
-    <p class="subtitle">Office leaderboard — three teams each, points for how far they go.</p>
-  </header>
+  <div class="app">
+    <header class="hero">
+      <div class="hero-glow" aria-hidden="true"></div>
+      <h1><span class="ball">⚽</span> World Cup 2026 Sweepstake</h1>
+      <p id="status-line" class="hero-status">Loading…</p>
+    </header>
 
-  <main>
-    <section id="status" class="status" aria-live="polite">Loading results…</section>
+    <p id="status" class="status" aria-live="polite">Loading results…</p>
 
-    <section class="board-wrap">
-      <table id="leaderboard" class="leaderboard" hidden>
-        <thead>
-          <tr>
-            <th class="col-rank">#</th>
-            <th class="col-name">Player</th>
-            <th class="col-team">Favourite</th>
-            <th class="col-team">Mid-range</th>
-            <th class="col-team">Underdog</th>
-            <th class="col-total">Total</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+    <main id="board" class="board">
+      <!-- cards injected by app.js -->
+      <div class="skeleton"></div>
+      <div class="skeleton"></div>
+      <div class="skeleton"></div>
+    </main>
+
+    <section class="prizes-wrap">
+      <div id="prizes" class="prizes"></div>
     </section>
 
-    <section class="scoring">
-      <h2>Scoring</h2>
+    <details class="scoring">
+      <summary>Scoring &amp; rules</summary>
       <ul class="scoring-list">
         <li><span>Group stage exit</span><b>1</b></li>
         <li><span>Round of 32</span><b>2</b></li>
@@ -42,14 +39,18 @@
         <li><span>Runner-up</span><b>8</b></li>
         <li><span>Winner</span><b>12</b></li>
       </ul>
-      <p class="note">Each player's total is the sum of their three teams. A team scores the value of the
-      furthest stage it reaches.</p>
-    </section>
-  </main>
+      <p class="note">Each player's total is the sum of their three teams. A team scores the value
+      of the furthest stage it reaches.</p>
+    </details>
 
-  <footer class="site-footer">
-    <span id="source-note"></span>
-  </footer>
+    <footer class="foot">
+      <p class="legend">
+        <span class="key"><span class="dot in"></span> still in</span>
+        <span class="key"><span class="strike">team</span> = eliminated</span>
+      </p>
+      <p id="source-note" class="source"></p>
+    </footer>
+  </div>
 
   <script src="app.js"></script>
 </body>

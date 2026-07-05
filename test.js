@@ -54,6 +54,13 @@ eq(stages["bravo"].points, 2, "Bravo lost R32 => 2");
 eq(stages["foxtrot"].points, 2, "Foxtrot lost R32 => 2");
 eq(stages["juliet"].points, 1, "Juliet out in group => 1");
 
+// Elimination flags.
+eq(stages["alpha"].eliminated, false, "Champion Alpha not eliminated");
+eq(stages["india"].eliminated, true, "Runner-up India eliminated");
+eq(stages["echo"].eliminated, true, "Echo out (lost SF + 3rd place)");
+eq(stages["hotel"].eliminated, true, "Hotel out (lost QF)");
+eq(stages["juliet"].eliminated, true, "Juliet out (group, knockouts started)");
+
 // Overrides win over derived data.
 const withOverride = applyOverrides({ ...stages }, { teamStages: { Juliet: "quarter-final" } });
 eq(withOverride["juliet"].points, 4, "Override lifts Juliet to QF => 4");
