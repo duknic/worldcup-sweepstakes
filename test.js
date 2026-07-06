@@ -81,21 +81,38 @@ eq(rows[0].rank, 1, "rank 1");
 eq(rows[1].rank, 2, "rank 2");
 eq(rows[4].total, 3, "unknown + two group teams => 1+1+1 = 3");
 
-// Frontier-based elimination: bracket drawn but NO scores yet. Teams that
-// didn't make the latest resolved round are out even without results.
+// Draw made (R32 fully drawn), no scores yet. Group non-qualifiers are out;
+// teams in a knockout tie stay in until they actually lose.
 const bracketOnly = { matches: [
   { round: "Matchday 1", group: "Group A", team1: "Aa", team2: "Bb" },
   { round: "Matchday 1", group: "Group A", team1: "Cc", team2: "Dd" },
-  { round: "Round of 32", num: 73, team1: "Aa", team2: "Cc" },   // Bb, Dd missed knockouts
-  { round: "Round of 16", num: 89, team1: "Aa", team2: "Ee" },   // Cc missed R16 => out
   { round: "Matchday 1", group: "Group B", team1: "Ee", team2: "Ff" },
+  { round: "Round of 32", num: 73, team1: "Aa", team2: "Cc" }, // only R32 match -> "fully" drawn
 ]};
 const bo = deriveStages(bracketOnly);
-eq(bo["aa"].eliminated, false, "Aa reached R16 frontier => in (no scores)");
-eq(bo["aa"].stage, "round-of-16", "Aa furthest R16");
-eq(bo["cc"].eliminated, true, "Cc stuck at R32 below frontier => out");
-eq(bo["bb"].eliminated, true, "Bb never left group => out");
-eq(bo["ff"].eliminated, true, "Ff group-only => out");
+eq(bo["aa"].eliminated, false, "Aa in R32, no result => still in");
+eq(bo["cc"].eliminated, false, "Cc in R32, no result => still in (not inferred out)");
+eq(bo["bb"].eliminated, true, "Bb group-only, draw made => out");
+eq(bo["ff"].eliminated, true, "Ff group-only, draw made => out");
+
+// REGRESSION: staggered knockouts must NOT falsely eliminate a surviving team
+// whose next match simply hasn't been played/drawn yet.
+const staggered = { matches: [
+  { round: "Matchday 1", group: "Group A", team1: "Aa", team2: "Bb", score: { ft: [1, 0] } },
+  { round: "Matchday 1", group: "Group B", team1: "Cc", team2: "Dd", score: { ft: [1, 0] } },
+  { round: "Matchday 1", group: "Group C", team1: "Ee", team2: "Ff", score: { ft: [1, 0] } },
+  { round: "Matchday 1", group: "Group D", team1: "Gg", team2: "Hh", score: { ft: [1, 0] } },
+  // R16 fully drawn with real teams
+  { round: "Round of 16", num: 89, team1: "Aa", team2: "Cc", score: { ft: [2, 0] } }, // played: Cc out
+  { round: "Round of 16", num: 90, team1: "Ee", team2: "Gg" }, // NOT played yet
+  // A QF slot already drawn for the played side (Aa advances) — later round exists
+  { round: "Quarter-final", num: 97, team1: "Aa", team2: "W90" },
+]};
+const st = deriveStages(staggered);
+eq(st["aa"].eliminated, false, "Aa won R16 => in");
+eq(st["cc"].eliminated, true, "Cc lost R16 (played) => out");
+eq(st["ee"].eliminated, false, "Ee R16 not played => still in (no false frontier-out)");
+eq(st["gg"].eliminated, false, "Gg R16 not played => still in");
 
 // New openfootball 2026 score format: { score: { ft:[a,b], et:[...], pen:[...] } }.
 const newFmt = { matches: [

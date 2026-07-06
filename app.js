@@ -129,6 +129,25 @@ function matchWinner(m) {
   return null;
 }
 
+// True once every match of the earliest knockout round has both real teams
+// (i.e. the group stage is over and the draw has been made).
+function firstKnockoutRoundDrawn(matches, realTeams) {
+  const koRanks = matches
+    .map((m) => STAGE_RANK[roundToStage(m.round)])
+    .filter((r) => r >= 1);
+  if (!koRanks.length) return false;
+  const firstRank = Math.min(...koRanks);
+  const firstRoundMatches = matches.filter(
+    (m) => STAGE_RANK[roundToStage(m.round)] === firstRank
+  );
+  return (
+    firstRoundMatches.length > 0 &&
+    firstRoundMatches.every(
+      (m) => realTeams.has(norm(m.team1)) && realTeams.has(norm(m.team2))
+    )
+  );
+}
+
 // ---- Core: derive each team's stage from match data -------------------------
 
 function deriveStages(data) {
@@ -144,19 +163,14 @@ function deriveStages(data) {
   }
 
   const best = {}; // normName -> { rank, stageKey, displayName }
-  const eliminated = {}; // normName -> true
+  const eliminated = {}; // normName -> true (lost a played knockout match)
   let champion = null;
   let runnerUp = null;
-  // Frontier = furthest round the tournament has advanced to (any real team
-  // slotted into it). A team that hasn't reached the frontier has been left
-  // behind — i.e. eliminated — even before the feed publishes scores.
-  let frontier = 0;
 
   const bump = (team, stageKey) => {
     const n = norm(team);
     if (!realTeams.has(n)) return; // ignore placeholders like "2A" / "W74"
     const rank = STAGE_RANK[stageKey];
-    if (rank > frontier) frontier = rank;
     if (!best[n] || rank > best[n].rank) {
       best[n] = { rank, stageKey, displayName: team };
     }
@@ -185,30 +199,37 @@ function deriveStages(data) {
     }
   }
 
-  // Convert to final stage keys + points + elimination. A team is out if it
-  // lost a played match, or if the tournament has advanced past its furthest
-  // round (rank below the frontier).
+  // Is the first knockout round fully drawn with real teams? Only then can we
+  // say a group-stage team that isn't in it has been eliminated. We DON'T infer
+  // knockout elimination from later rounds being drawn — ties are staggered
+  // across days, so a surviving team can simply be waiting for its next match.
+  const bracketDrawn = firstKnockoutRoundDrawn(matches, realTeams);
+
+  // Convert to final stage keys + points + elimination. A team is out ONLY if
+  // it actually lost a played knockout match, or (for group-only teams) the
+  // knockout draw exists and it didn't make it.
   const result = {};
   for (const [n, info] of Object.entries(best)) {
     let stageKey = info.stageKey;
     if (stageKey === "final") stageKey = "runner-up"; // reached final, default
+    const reachedKnockout = info.rank >= 1;
+    const elim = reachedKnockout ? !!eliminated[n] : !!eliminated[n] || bracketDrawn;
     result[n] = {
       stage: stageKey,
       points: STAGE_POINTS[stageKey],
       displayName: info.displayName,
-      eliminated: !!eliminated[n] || info.rank < frontier,
+      eliminated: elim,
     };
   }
 
-  // Real teams with no knockout appearance sit at the group baseline. Once the
-  // knockout bracket exists (frontier past the group), those teams are out.
+  // Safety net for any real team that somehow never appeared above.
   for (const n of realTeams) {
     if (!result[n]) {
       result[n] = {
         stage: "group",
         points: STAGE_POINTS.group,
         displayName: n,
-        eliminated: frontier > 0,
+        eliminated: bracketDrawn,
       };
     }
   }
@@ -467,11 +488,30 @@ function rankGlyph(row, isLeader, isSpoon) {
 function card(row, isLeader, isSpoon) {
   const badgeClass = isLeader ? "lead" : row.total === 0 ? "zero" : "";
   const cls = ["card", isLeader ? "leader" : "", isSpoon ? "wooden" : ""].join(" ").trim();
+  // Summary line when two of this player's teams meet in an upcoming tie.
+  const pending = row.slots.filter((s) => s.clash && !s.clash.played);
+  let clashNote = "";
+  if (pending.length) {
+    // Each unplayed clash involves two of the player's teams; de-dupe by stage.
+    const byStage = {};
+    pending.forEach((s) => {
+      byStage[s.clash.stageLabel] = byStage[s.clash.stageLabel] || new Set();
+      byStage[s.clash.stageLabel].add(s.teamName);
+      byStage[s.clash.stageLabel].add(s.clash.withTeam);
+    });
+    const parts = Object.entries(byStage).map(([stageLabel, teams]) => {
+      const names = [...teams].join(" v ");
+      return `${escapeHtml(names)} in the ${stageLabel} — one of yours goes out`;
+    });
+    clashNote = `<div class="clash-note">⚔ ${parts.join("; ")}</div>`;
+  }
+
   return `
     <article class="${cls}">
       <div class="rank">${rankGlyph(row, isLeader, isSpoon)}</div>
       <div class="body">
         <div class="pname">${escapeHtml(row.name)}</div>
+        ${clashNote}
         <ul class="teams">${row.slots.map(teamLine).join("")}</ul>
       </div>
       <div class="pts ${badgeClass}">
